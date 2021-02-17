@@ -1,5 +1,6 @@
 # 4mat
 
+## -- Work in progress --
 A simple text formatting tool to convert between well known text formats.  
 Streams one or more source files into a single format.
 
