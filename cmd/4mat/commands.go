@@ -10,6 +10,10 @@ import (
 	"os/signal"
 )
 
+// Verbose displays file error logs usually surpressed. (Such as unknown format)
+// TODO: Implement this with a common error handler for all the log.Println(err)
+var Verbose bool
+
 func ToYaml(filepaths ...string) error {
 	return StreamPaths(os.Stdout, formats.FormatYAML, filepaths...)
 }
