@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"github.com/eurozulu/4mat/formats"
 	"github.com/eurozulu/4mat/parser"
+	"io"
 	"os"
+	"os/signal"
 )
 
 func ToYaml(filepaths ...string) error {
-	return StreamPaths(formats.FormatYAML, filepaths...)
+	return StreamPaths(os.Stdout, formats.FormatYAML, filepaths...)
 }
 
 type JsonCommand struct {
@@ -17,10 +19,10 @@ type JsonCommand struct {
 }
 
 func (jc JsonCommand) ToJson(filepaths ...string) error {
-	return StreamPaths(formats.FormatJSON, filepaths...)
+	return StreamPaths(os.Stdout, formats.FormatJSON, filepaths...)
 }
 
-func StreamPaths(format formats.Format, filepaths ...string) error {
+func StreamPaths(out io.Writer, format formats.Format, filepaths ...string) error {
 	ctx, cnl := context.WithCancel(context.Background())
 	defer cnl()
 
@@ -28,13 +30,22 @@ func StreamPaths(format formats.Format, filepaths ...string) error {
 	if outF == nil {
 		return fmt.Errorf("unknown format")
 	}
-	out := &formats.FormatWriter{
+	fw := &formats.FormatWriter{
 		Marshaler: outF,
-		Out:       os.Stdout,
+		Out:       out,
 	}
 
-	done := out.WriteStream(ctx, parser.ParseFiles(ctx, filepaths...))
+	done := fw.WriteStream(ctx, parser.ParseFiles(ctx, filepaths...))
 
-	<-done
-	return nil
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Kill, os.Interrupt)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-done:
+		return nil
+	case <-sig:
+		return nil
+	}
 }
